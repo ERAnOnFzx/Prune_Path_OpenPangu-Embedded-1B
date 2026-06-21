@@ -63,3 +63,4 @@ albumentations
 opencv-python-headless
 k-means-constrained
 rouge_score
+sentencepiece
