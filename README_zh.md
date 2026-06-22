@@ -70,9 +70,9 @@ python inference.py \
 
 | 评测轨道 | 目标说明 | 执行命令 |
 | :--- | :--- | :--- |
-| **轨道一** | **稠密 Baseline 性能分析：** 测量未经稀疏化注入的原始模型层及原生 MLP 的计算耗时分布。 | `python benchmark_dense.py --num_samples 10 --dtype bf16` |
-| **轨道二** | **传统原生 MoE 性能分析：** 评估使用常规动态掩码控制时的动态路由专家开销。 | `python benchmark_origin.py --num_samples 10 --checkpoint "../stage2_tau70_best.pt" --tau 0.70` |
-| **轨道三** | **Triton 内核全加速 MoE 性能分析：** 测试执行物理空间重排、并完全挂载 Triton 高融合算子后的极致吞吐性能。 | `python benchmark_triton.py --num_samples 10 --checkpoint "../weights/stage2_tau70_best.pt" --tau 0.70` |
+| **轨道一** | **稠密 Baseline 性能分析：** 测量未经稀疏化注入的原始模型层及原生 MLP 的计算耗时分布。 | `python evaluation_dense.py --num_samples 10 --dtype bf16` |
+| **轨道二** | **传统原生 MoE 性能分析：** 评估使用常规动态掩码控制时的动态路由专家开销。 | `python evaluation_origin.py --num_samples 10 --checkpoint "../stage2_tau70_best.pt" --tau 0.70` |
+| **轨道三** | **Triton 内核全加速 MoE 性能分析：** 测试执行物理空间重排、并完全挂载 Triton 高融合算子后的极致吞吐性能。 | `python evaluation_triton.py --num_samples 10 --checkpoint "../weights/stage2_tau70_best.pt" --tau 0.70` |
 | **轨道四** | **XSum 下游摘要任务 ROUGE 评测：** 对模型在验证集上的文本语义生成质量进行定量打分，自动输出 ROUGE-1/2/L 指标最终报告。 | `python test_npu_rougel.py --checkpoint "../stage2_tau70_best.pt" --tau 0.70` |
 
 ---
@@ -106,10 +106,10 @@ python inference.py \
 ├──── openpangu_moe_origin.py                 # 传统动态掩码控制的原生大模型结构打平、MoE 动态注入与多任务损失综合计算模块
 ├──── tl_kernel_optimized_Ultimate_PanGU.py   # Triton 硬件级 Prefill 前缀扫描与 Decode 全融合 SwiGLU 自定义算子内核
 ├──── inference.py                            # 单条摘要生成脚本
-├──── evaluation_dense.py                      # 评测代码 1：Dense 原生 Baseline 架构耗时细分剖析脚本
-├──── evaluation_origin.py                     # 评测代码 2：传统动态掩码控制的 MoE 基础测速脚本
-├──── evaluation_triton.py                     # 评测代码 3：基于 Triton 全融合内核的极致加速测速脚本
-└──── test_npu_rougel.py                        # 评测代码 4：标准 ROUGE 指标自动化测试与定量报告流
+├──── evaluation_dense.py                     # 评测代码 1：Dense 原生 Baseline 架构耗时细分剖析脚本
+├──── evaluation_moe.py                       # 评测代码 2：传统动态掩码控制的 MoE 基础测速脚本
+├──── evaluation_triton.py                    # 评测代码 3：基于 Triton 全融合内核的极致加速测速脚本
+└──── test_npu_rougel.py                      # 评测代码 4：标准 ROUGE 指标自动化测试与定量报告流
 ```
 
 ---
