@@ -1,4 +1,4 @@
-# PrunePath-OpenpanguMoE-1B
+# # Prune_Path_OpenPangu-Embedded-1B
 
 [English](README.md) | [简体中文](README_zh.md)
 
