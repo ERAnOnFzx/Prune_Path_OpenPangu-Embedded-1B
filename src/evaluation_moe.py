@@ -67,6 +67,7 @@ def parse_args():
                         help="Path to the best fine-tuned MoE model weights checkpoint")
     parser.add_argument("--num_samples", type=int, default=2, 
                         help="Number of operational sample streams to loop through for profiling statistics.")
+    parser.add_argument("--tau", type=float, default=0.7, help="Setting the tau threshold.")
     return parser.parse_args()
 
 
@@ -308,6 +309,8 @@ if __name__ == "__main__":
         print(f"[WARNING] 硬件环境警告：未检测到昇腾计算硬件，回退至 【{device_name}】。测速指标将失效。")
 
     train_args = CustomTrainingArgs()
+    if args.tau:
+        train_args.tau = args.tau
 
     # --------------------------------------------------------------------------
     # Component Tokenizer & OpenPangu Model Config Mapping
