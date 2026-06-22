@@ -45,7 +45,7 @@ pip install -r requirements.txt
 We have published the fully sparse MoE weights of openPangu, after fine-tuning and rearrangement, on the [Hugging Face](https://huggingface.co/Zixun2408/PrunePath-OpenpanguMoE-1B/tree/main):
 
 * **Base Dense Model:** `FreedomIntelligence/openPangu-Embedded-1B`
-* **Downstream Fine-tuned Expert Models:** Please download `stage2_tau95_best.pt` or `stage2_tau70_best.pt` from our published repository and place them in the `./weights/` directory.
+* **Downstream Fine-tuned Expert Models:** Please download the weights (default settings use `stage2_tau95_best.pt` or `stage2_tau70_best.pt`) from our published repository and place them in the `./weights/` directory.
 
 ---
 
@@ -55,22 +55,12 @@ We have published the fully sparse MoE weights of openPangu, after fine-tuning a
 
 Use the following commands to initiate a single text summarization or batch document summarization processing flow.
 
-**Mode A: Single-text Interactive Fast Inference**
+**Single-text Interactive Inference**
 ```bash
-python test_npu_xsum.py \
+python inference.py \
     --model_name "FreedomIntelligence/openPangu-Embedded-1B" \
     --checkpoint "./weights/stage2_tau95_best.pt" \
     --text "The input text documents go here..." \
-    --tau 0.95
-```
-
-**Mode B: Large-batch Automated Offline Inference and Serialization**
-```bash
-python test_npu_xsum.py \
-    --model_name "FreedomIntelligence/openPangu-Embedded-1B" \
-    --checkpoint "./weights/stage2_tau95_best.pt" \
-    --input_file "./data/val_docs.txt" \
-    --output_file "./data/predictions.txt" \
     --tau 0.95
 ```
 
@@ -80,10 +70,10 @@ We provide fully decoupled hardware-level profiling scripts (targeting pure Pref
 
 | Track | Objective | Execution Command |
 | :--- | :--- | :--- |
-| **Track 1** | **Dense Baseline Analysis:** Measure the computation time distribution of the original model layers and native MLPs without sparse injection. | `python benchmark_dense.py --num_samples 10 --dtype bf16` |
-| **Track 2** | **Native MoE Analysis:** Evaluate the dynamic routing expert overhead when using standard dynamic mask controls. | `python benchmark_origin.py --num_samples 10 --checkpoint "../stage2_tau70_best.pt"` |
-| **Track 3** | **Triton Accelerated MoE:** Test extreme throughput performance after executing physical space rearrangement and mounting the highly fused Triton operators. | `python benchmark_triton.py --num_samples 10 --checkpoint "../weights/stage2_tau70_best.pt"` |
-| **Track 4** | **XSum Task ROUGE Metric:** Quantitatively score the text semantic generation quality on the validation set, outputting standard ROUGE-1/2/L reports. | `python eval_xsum_rouge.py` |
+| **Track 1** | **Dense Baseline Analysis:** Measure the computation time distribution of the original model layers and native MLPs without sparse injection. | `python evaluation_dense.py --num_samples 10 --dtype bf16` |
+| **Track 2** | **Native MoE Analysis:** Evaluate the dynamic routing expert overhead when using standard dynamic mask controls. | `python evaluation_origin.py --num_samples 10 --checkpoint "../stage2_tau70_best.pt" --tau 0.70` |
+| **Track 3** | **Triton Accelerated MoE:** Test extreme throughput performance after executing physical space rearrangement and mounting the highly fused Triton operators. | `python evaluation_triton.py --num_samples 10 --checkpoint "../weights/stage2_tau70_best.pt" --tau 0.70` |
+| **Track 4** | **XSum Task ROUGE Metric:** Quantitatively score the text semantic generation quality on the validation set, outputting standard ROUGE-1/2/L reports. | `python test_npu_rougel.py --checkpoint "../stage2_tau70_best.pt" --tau 0.70` |
 
 ---
 
@@ -109,15 +99,17 @@ All hardware names, memory distributions, and target model identifiers in the ru
 ├── environment.yml          # Base dependency and ARM-compatible environment build configuration
 ├── requirements.txt         # Ascend hardware driver (torch_npu) and LLM dependencies list
 ├── src/
-├──── Pangu_Clusters/          # Auto-generated neuron Constrained K-Means clustering topology cache
-├──── MoEBlock.py              # Core control layer for dynamic routing, Softmax gating, and numeric bound safety
-├──── openpangu_moe.py         # Native structural flattening, dynamic MoE injection, and multi-task loss computation
-├──── tl_kernel_optimized.py   # Hardware-level Triton kernel for Prefill prefix scanning and fully fused Decode SwiGLU
-├──── test_npu_xsum.py         # Core entry script for single/batch offline accelerated summarization inference
-├──── benchmark_dense.py       # Evaluation 1: Dense native Baseline architecture time profiling
-├──── benchmark_origin.py      # Evaluation 2: Native MoE benchmarking with traditional dynamic mask control
-├──── benchmark_triton.py      # Evaluation 3: Extreme acceleration benchmarking based on fully fused Triton kernels
-└──── eval_xsum_rouge.py       # Evaluation 4: Standard ROUGE metric automated testing and quantitative reporting
+├──── Pangu_Clusters/                                # Auto-generated neuron Constrained K-Means clustering topology cache
+├──── MoEBlock.py                                    # Core control layer for dynamic routing, Softmax gating, and numeric bound safety
+├──── openpangu_moe.py                               # Native structural flattening, dynamic MoE injection, and multi-task loss computation
+├──── MoEBlock_origin.py                             # Core control layer for dynamic routing, Softmax gating, and numeric bound safety (Simple implementation version)
+├──── openpangu_moe_origin.py                        # Native structural flattening, dynamic MoE injection, and multi-task loss computation (Simple implementation version)
+├──── tl_kernel_optimized_Ultimate_PanGU.py          # Hardware-level Triton kernel for Prefill prefix scanning and fully fused Decode SwiGLU
+├──── inference.py                                   # Core entry script for single/batch offline accelerated summarization inference
+├──── evaluation_dense.py                            # Evaluation 1: Dense native Baseline architecture time profiling
+├──── evaluation_moe.py                              # Evaluation 2: Native MoE benchmarking with traditional dynamic mask control
+├──── evaluation_triton.py                           # Evaluation 3: Extreme acceleration benchmarking based on fully fused Triton kernels
+└──── test_npu_rougel.py                             # Evaluation 4: Standard ROUGE metric automated testing and quantitative reporting
 ```
 
 ---
