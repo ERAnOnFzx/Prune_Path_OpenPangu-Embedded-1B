@@ -45,7 +45,7 @@ pip install -r requirements.txt
 我们已将微调及重排后的 openPangu-MoE 全量稀疏权重发布至 [Hugging Face](https://huggingface.co/Zixun2408/PrunePath-OpenpanguMoE-1B/tree/main) 模型社区：
 
 * **基础稠密底座模型：** `FreedomIntelligence/openPangu-Embedded-1B`
-* **下游微调专家模型：** 请从我们发布的存储库下载 `stage2_tau95_best.pt` 或 `stage2_tau70_best.pt` 并置于 `./weights/` 目录下。
+* **下游微调专家模型：** 请从我们发布的存储库下载权重（默认设置中使用的是 `stage2_tau95_best.pt` 或 `stage2_tau70_best.pt`） 并置于 `./weights/` 目录下。
 
 ---
 
@@ -53,24 +53,14 @@ pip install -r requirements.txt
 
 ### 1. 文本摘要生成推理
 
-使用以下命令启动单条文本摘要生成或批量文档摘要处理流。
+使用以下命令启动单条文本摘要生成。
 
-**模式 A：单条文本交互式极速推理**
+**单条文本交互式推理**
 ```
-python test_npu_xsum.py \
+python inference.py \
     --model_name "FreedomIntelligence/openPangu-Embedded-1B" \
     --checkpoint "./weights/stage2_tau95_best.pt" \
     --text "The input text documents go here..." \
-    --tau 0.95
-```
-
-**模式 B：大批量文本自动化离线推理与持久化保存**
-```
-python test_npu_xsum.py \
-    --model_name "FreedomIntelligence/openPangu-Embedded-1B" \
-    --checkpoint "./weights/stage2_tau95_best.pt" \
-    --input_file "./data/val_docs.txt" \
-    --output_file "./data/predictions.txt" \
     --tau 0.95
 ```
 
@@ -81,9 +71,9 @@ python test_npu_xsum.py \
 | 评测轨道 | 目标说明 | 执行命令 |
 | :--- | :--- | :--- |
 | **轨道一** | **稠密 Baseline 性能分析：** 测量未经稀疏化注入的原始模型层及原生 MLP 的计算耗时分布。 | `python benchmark_dense.py --num_samples 10 --dtype bf16` |
-| **轨道二** | **传统原生 MoE 性能分析：** 评估使用常规动态掩码控制时的动态路由专家开销。 | `python benchmark_origin.py --num_samples 10 --checkpoint "../stage2_tau70_best.pt"` |
-| **轨道三** | **Triton 内核全加速 MoE 性能分析：** 测试执行物理空间重排、并完全挂载 Triton 高融合算子后的极致吞吐性能。 | `python benchmark_triton.py --num_samples 10 --checkpoint "../weights/stage2_tau70_best.pt"` |
-| **轨道四** | **XSum 下游摘要任务 ROUGE 评测：** 对模型在验证集上的文本语义生成质量进行定量打分，自动输出 ROUGE-1/2/L 指标最终报告。 | `python eval_xsum_rouge.py` |
+| **轨道二** | **传统原生 MoE 性能分析：** 评估使用常规动态掩码控制时的动态路由专家开销。 | `python benchmark_origin.py --num_samples 10 --checkpoint "../stage2_tau70_best.pt" --tau 0.70` |
+| **轨道三** | **Triton 内核全加速 MoE 性能分析：** 测试执行物理空间重排、并完全挂载 Triton 高融合算子后的极致吞吐性能。 | `python benchmark_triton.py --num_samples 10 --checkpoint "../weights/stage2_tau70_best.pt" --tau 0.70` |
+| **轨道四** | **XSum 下游摘要任务 ROUGE 评测：** 对模型在验证集上的文本语义生成质量进行定量打分，自动输出 ROUGE-1/2/L 指标最终报告。 | `python test_npu_rougel.py --checkpoint "../stage2_tau70_best.pt" --tau 0.70` |
 
 ---
 
@@ -105,18 +95,21 @@ python test_npu_xsum.py \
 ## 📂 仓库架构说明
 
 ```text
-├── Pangu_Clusters/          # 自动化生成的神经元 Constrained K-Means 聚类拓扑缓存
 ├── weights/                 # 细粒度微调后的各阶段 MoE 权重专家检查点文件
 ├── environment.yml          # 国产化基础依赖与 ARM 兼容环境编译镜像配置文件
 ├── requirements.txt         # 昇腾特殊硬件驱动（torch_npu）及大模型依赖补全列表
-├── MoEBlock.py              # 动态路由、Softmax 门控与数值边界安全防护核心控制层
-├── openpangu_moe.py         # 原生大模型结构打平、MoE 动态注入与多任务损失综合计算模块
-├── tl_kernel_optimized.py   # Triton 硬件级 Prefill 前缀扫描与 Decode 全融合 SwiGLU 自定义算子内核
-├── test_npu_xsum.py         # 摘要生成单条/大批量离线加速推理核心入口脚本
-├── benchmark_dense.py       # 评测代码 1：Dense 原生 Baseline 架构耗时细分剖析脚本
-├── benchmark_origin.py      # 评测代码 2：传统动态掩码控制的 MoE 基础测速脚本
-├── benchmark_triton.py      # 评测代码 3：基于 Triton 全融合内核的极致加速测速脚本
-└── eval_xsum_rouge.py       # 评测代码 4：标准 ROUGE 指标自动化测试与定量报告流
+├── src/          
+├──── Pangu_Clusters/                         # 自动化生成的神经元 Constrained K-Means 聚类拓扑缓存
+├──── MoEBlock.py                             # 动态路由、Softmax 门控与数值边界安全防护核心控制层
+├──── openpangu_moe.py                        # 原生大模型结构打平、MoE 动态注入与多任务损失综合计算模块
+├──── MoEBlock_origin.py                      # 传统动态掩码控制的动态路由、Softmax 门控与数值边界安全防护核心控制层
+├──── openpangu_moe_origin.py                 # 传统动态掩码控制的原生大模型结构打平、MoE 动态注入与多任务损失综合计算模块
+├──── tl_kernel_optimized_Ultimate_PanGU.py   # Triton 硬件级 Prefill 前缀扫描与 Decode 全融合 SwiGLU 自定义算子内核
+├──── inference.py                            # 单条摘要生成脚本
+├──── evaluation_dense.py                      # 评测代码 1：Dense 原生 Baseline 架构耗时细分剖析脚本
+├──── evaluation_origin.py                     # 评测代码 2：传统动态掩码控制的 MoE 基础测速脚本
+├──── evaluation_triton.py                     # 评测代码 3：基于 Triton 全融合内核的极致加速测速脚本
+└──── test_npu_rougel.py                        # 评测代码 4：标准 ROUGE 指标自动化测试与定量报告流
 ```
 
 ---
